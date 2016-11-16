@@ -161,7 +161,7 @@ void Astar(){
 
   int currentX = goalX;
   int currentY = goalY;
-
+my_path_bitch.header.frame_id="map";
   while((currentX != startX || currentY != startY)){
     geometry_msgs::PoseStamped pose; 
     pose.header.frame_id="map";
