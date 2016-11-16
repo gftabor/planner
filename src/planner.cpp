@@ -6,6 +6,7 @@
 #include <math.h>  
 #include "nav_msgs/OccupancyGrid.h"
 #include "nav_msgs/GridCells.h"
+#include "nav_msgs/Path.h"
 #include "geometry_msgs/Point.h"
 #include <iostream>
 #include "geometry_msgs/PoseStamped.h"
@@ -22,7 +23,8 @@ int startY = 198;
 int goalX = 186;
 int goalY = 211;
 
-ros::Publisher pub; 
+ros::Publisher pub;
+ros::Publisher pubWay;
 
 
 nav_msgs::OccupancyGrid grid;
@@ -77,15 +79,18 @@ void publishCells(std::vector<node> &nodes){
   }
   pub.publish(cells);
 }
+void publishWay(nav_msgs::Path path){
+  std::cout << "size real  " << path.poses.size() << std::endl;
+  for(int i=0; i <path.poses.size(); i++){
+    std::cout << path.poses[i].pose.position.x<<" "<< path.poses[i].pose.position.y <<std::endl;
+
+  }
+  pubWay.publish(path);
+}
   
 
 int count =0;
-void Astar(){
-  nav_msgs::GridCells cells;
-  cells.header.frame_id = "map";
-  cells.cell_width = resolution;
-  cells.cell_height = resolution;
-
+void Astar(){  
   std::vector<node> fringe;
   std::vector<node> processed;
   std::make_heap(fringe.begin(),fringe.end(),Comp());
@@ -97,11 +102,13 @@ void Astar(){
     node processingNode = fringe.front();
     //std::cout <<processingNode.nodeY <<std::endl;
     if(processingNode.nodeX ==goalX && processingNode.nodeY == goalY){//if processing goal or fringe empty
-      std::cout << "cost is "<< processingNode.realCost <<std::endl;
-      break;
-    }
+        std::cout << "cost is "<< processingNode.realCost <<std::endl;
+        processed.push_back(processingNode);
+
+        break;
+      }
     count ++;
-    if(fringe.size()==0 || count >100000){
+    if(fringe.size()==0 || count >500000){
       std::cout << "no path" <<std::endl;
       break;
     }
@@ -112,7 +119,6 @@ void Astar(){
     bool wasProcessed=false;
     for(unsigned j=0; j<processed.size();j++){
       if(processed[j].nodeX==processingNode.nodeX && processed[j].nodeY==processingNode.nodeY){
-        
         wasProcessed=true;
         //std::cout << "was processed" << processed[j].nodeX<<"  " <<processed[j].nodeY <<std::endl;
         break;
@@ -144,13 +150,36 @@ void Astar(){
       float cost = dist(x,y,goalX,goalY) + processingNode.realCost +1;
       node* newNode = new node(x,y,cost,processingNode.nodeX,processingNode.nodeY,processingNode.realCost +1);
       fringe.push_back(*newNode); std::push_heap (fringe.begin(),fringe.end(),Comp());
+      
     }
     processed.push_back(processingNode);
     publishCells(processed);
-    ros::Duration(0.005).sleep(); // sleep for half a second
-
-
+    ros::Duration(0.0005).sleep(); // sleep for half a second
   }
+  
+  nav_msgs::Path my_path_bitch;
+
+  int currentX = goalX;
+  int currentY = goalY;
+
+  while((currentX != startX || currentY != startY)){
+    geometry_msgs::PoseStamped pose; 
+    pose.header.frame_id="map";
+    pose.pose.position.x = (currentX*resolution)+offsetX + (1.5 * resolution);
+    pose.pose.position.y = (currentY*resolution)+offsetY - (.5 * resolution);
+    my_path_bitch.poses.push_back(pose);
+
+    for(long i=0; i<processed.size(); i++){
+      if(processed[i].nodeX == currentX && processed[i].nodeY == currentY){
+        currentX = processed[i].parentX;
+        currentY = processed[i].parentY;
+        break;
+      }
+    }   
+  }
+  pubWay.publish(my_path_bitch);
+  std::cout << "size  " << my_path_bitch.poses.size() << std::endl;
+
 }
 
 int main(int argc, char **argv)
@@ -160,6 +189,7 @@ int main(int argc, char **argv)
 
   ros::NodeHandle n;
   pub = n.advertise<nav_msgs::GridCells>("/map_check", 1000);
+  pubWay = n.advertise<nav_msgs::Path>("/totes_path", 1000);
 
   ros::Subscriber sub = n.subscribe("/map", 1000, mapCallBack);
   ros::Subscriber goal_sub = n.subscribe("move_base_simple/goal",100,readGoal);
