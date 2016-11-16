@@ -87,81 +87,12 @@ void publishWay(nav_msgs::Path path){
   }
   pubWay.publish(path);
 }
-  
-
-int count =0;
-void Astar(){  
-  std::vector<node> fringe;
-  std::vector<node> processed;
-  std::make_heap(fringe.begin(),fringe.end(),Comp());
-  node firstNode(startX,startY,0,startX,startY,0);
-  fringe.push_back(firstNode); std::push_heap (fringe.begin(),fringe.end(),Comp());
-  while(true){
-  //for(int k =0; k<fringe.size();k++){ std::cout <<fringe[k].cost <<"  ";}std::cout <<std::endl;
-
-    node processingNode = fringe.front();
-    //std::cout <<processingNode.nodeY <<std::endl;
-    if(processingNode.nodeX ==goalX && processingNode.nodeY == goalY){//if processing goal or fringe empty
-        std::cout << "cost is "<< processingNode.realCost <<std::endl;
-        processed.push_back(processingNode);
-
-        break;
-      }
-    count ++;
-    if(fringe.size()==0 || count >500000){
-      std::cout << "no path" <<std::endl;
-      break;
-    }
-    std::pop_heap(fringe.begin(),fringe.end(),Comp());
-    fringe.pop_back();
-    //for(int k =0; k<fringe.size();k++){ std::cout <<fringe[k].nodeY <<"  ";}std::cout <<std::endl;
-
-    bool wasProcessed=false;
-    for(unsigned j=0; j<processed.size();j++){
-      if(processed[j].nodeX==processingNode.nodeX && processed[j].nodeY==processingNode.nodeY){
-        wasProcessed=true;
-        //std::cout << "was processed" << processed[j].nodeX<<"  " <<processed[j].nodeY <<std::endl;
-        break;
-      }
-    }
-    if(wasProcessed){
-      continue;
-    }
-    //std::cout <<"processing " <<processingNode.nodeX <<"," << processingNode.nodeY<< " to find goal  " <<goalX<<"," << goalY << std::endl;
-
-    for(int i =0; i<4; i++){
-      int x = processingNode.nodeX;
-      int y = processingNode.nodeY;
-      switch(i){
-        case 0:x++; break;
-        case 1:y++; break;
-        case 2:x--; break;
-        case 3:y--; break;
-      }
-      if(x <1 || y <1 || x>width || y >height){ 
-        std::cout <<"hit bounds" <<std::endl;
-        continue;
-      }
-      if(grid.data[(x+1 + (y-1)*width)]==100){ // if occupied
-        //std::cout << "blocked" <<std::endl;
-        continue;
-      }
-
-      float cost = dist(x,y,goalX,goalY) + processingNode.realCost +1;
-      node* newNode = new node(x,y,cost,processingNode.nodeX,processingNode.nodeY,processingNode.realCost +1);
-      fringe.push_back(*newNode); std::push_heap (fringe.begin(),fringe.end(),Comp());
-      
-    }
-    processed.push_back(processingNode);
-    publishCells(processed);
-    ros::Duration(0.0005).sleep(); // sleep for half a second
-  }
-  
+void createWay(std::vector<node> &processed){
   nav_msgs::Path my_path_bitch;
 
   int currentX = goalX;
   int currentY = goalY;
-my_path_bitch.header.frame_id="map";
+  my_path_bitch.header.frame_id="map";
   while((currentX != startX || currentY != startY)){
     geometry_msgs::PoseStamped pose; 
     pose.header.frame_id="map";
@@ -179,8 +110,83 @@ my_path_bitch.header.frame_id="map";
     }   
   }
   pubWay.publish(my_path_bitch);
-  std::cout << "size  " << my_path_bitch.poses.size() << std::endl;
 
+}
+  
+
+int count =0;
+void Astar(){  
+  std::vector<node> fringe;
+  std::vector<node> processed;
+  std::make_heap(fringe.begin(),fringe.end(),Comp());
+  node firstNode(startX,startY,0,startX,startY,0);
+  fringe.push_back(firstNode); std::push_heap (fringe.begin(),fringe.end(),Comp());
+  while(true){
+    node processingNode = fringe.front();
+
+
+    //if any end conditions are done stop immediately
+    if(processingNode.nodeX ==goalX && processingNode.nodeY == goalY){//if processing goal or fringe empty
+        std::cout << "cost is "<< processingNode.realCost <<std::endl;
+        processed.push_back(processingNode);
+
+        break;
+      }
+    count ++;
+    if(fringe.size()==0 || count >500000){
+      std::cout << "no path" <<std::endl;
+      break;
+    }
+
+
+    //remove the point from list
+    std::pop_heap(fringe.begin(),fringe.end(),Comp());
+    fringe.pop_back();
+
+    //ensure point has not been processed
+    bool wasProcessed=false;
+    for(unsigned j=0; j<processed.size();j++){
+      if(processed[j].nodeX==processingNode.nodeX && processed[j].nodeY==processingNode.nodeY){
+        wasProcessed=true;
+        break;
+      }
+    }
+    if(wasProcessed){
+      continue;
+    }
+
+
+    //process by creating new points that are neighbours to currently being processed node
+    for(int i =0; i<4; i++){
+      int x = processingNode.nodeX;
+      int y = processingNode.nodeY;
+      switch(i){
+        case 0:x++; break;
+        case 1:y++; break;
+        case 2:x--; break;
+        case 3:y--; break;
+      }
+      if(x <1 || y <1 || x>width || y >height){ 
+        std::cout <<"hit bounds" <<std::endl;
+        continue;
+      }
+      if(grid.data[(x+1 + (y-1)*width)]==100){ // if occupied
+        continue;
+      }
+
+      float cost = dist(x,y,goalX,goalY) + processingNode.realCost +1;
+      node* newNode = new node(x,y,cost,processingNode.nodeX,processingNode.nodeY,processingNode.realCost +1);
+      fringe.push_back(*newNode); std::push_heap (fringe.begin(),fringe.end(),Comp());
+    }
+
+    //print current gridcells of processed nodes
+    processed.push_back(processingNode);
+    publishCells(processed);
+    ros::Duration(0.0005).sleep(); // sleep for half a second//process nodes until you process goal
+  }  
+  //create and publish waypoints
+  createWay(processed);
+  
 }
 
 int main(int argc, char **argv)
