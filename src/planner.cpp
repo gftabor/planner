@@ -168,7 +168,7 @@ void Astar(){
     pose.pose.position.x = (currentX*resolution)+offsetX + (1.5 * resolution);
     pose.pose.position.y = (currentY*resolution)+offsetY - (.5 * resolution);
     my_path_bitch.poses.push_back(pose);
-
+    pose.pose.orientation.w =1;
     for(long i=0; i<processed.size(); i++){
       if(processed[i].nodeX == currentX && processed[i].nodeY == currentY){
         currentX = processed[i].parentX;
