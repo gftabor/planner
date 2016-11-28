@@ -35,18 +35,17 @@ void mapCallBack(nav_msgs::OccupancyGrid data){
   height = data.info.height;
   offsetX = data.info.origin.position.x;
   offsetY = data.info.origin.position.y;
-  received =1;
 }
 void readStart(geometry_msgs::PoseWithCovarianceStamped p){
   startX = (p.pose.pose.position.x - offsetX)/resolution -1.5;
   startY = (p.pose.pose.position.y - offsetY)/resolution +0.5;
-  received=1;
+  received++;
 
 }
 void readGoal(geometry_msgs::PoseStamped p){
   goalX = (p.pose.position.x - offsetX)/resolution -1.5;
   goalY = (p.pose.position.y - offsetY)/resolution +0.5;
-  received=1;
+  received++;
 }
 
 
@@ -121,7 +120,7 @@ void Astar(){
   std::make_heap(fringe.begin(),fringe.end(),Comp());
   node firstNode(startX,startY,0,startX,startY,0);
   fringe.push_back(firstNode); std::push_heap (fringe.begin(),fringe.end(),Comp());
-  while(true){
+  while(true){//process nodes until you process goal
     node processingNode = fringe.front();
 
 
@@ -182,7 +181,7 @@ void Astar(){
     //print current gridcells of processed nodes
     processed.push_back(processingNode);
     publishCells(processed);
-    ros::Duration(0.0005).sleep(); // sleep for half a second//process nodes until you process goal
+    //ros::Duration(0.0005).sleep(); // sleep for half a second
   }  
   //create and publish waypoints
   createWay(processed);
@@ -206,12 +205,12 @@ int main(int argc, char **argv)
 
 
   ros::spinOnce();
-  if(received){
+  if(received==2){
     //pub.publish((publishCells()));
     std::cout <<"saw msg" <<std::endl;
     Astar();
 
-    received = 0;
+    received = 1;
   }
   }
 
