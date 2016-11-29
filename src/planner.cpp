@@ -1,4 +1,5 @@
 #include "ros/ros.h"
+#include <tf/transform_listener.h>
 #include "std_msgs/String.h"
 #include "planner/node.h"
 #include <vector>       // std::vector
@@ -27,8 +28,11 @@ ros::Publisher pub;
 ros::Publisher pubWay;
 
 
+
 nav_msgs::OccupancyGrid grid;
 void mapCallBack(nav_msgs::OccupancyGrid data){
+  std::cout << "saw map" <<std::endl;
+
   grid = data;
   resolution = data.info.resolution;
   width = data.info.width;
@@ -46,6 +50,12 @@ void readGoal(geometry_msgs::PoseStamped p){
   goalX = (p.pose.position.x - offsetX)/resolution -1.5;
   goalY = (p.pose.position.y - offsetY)/resolution +0.5;
   received++;
+  tf::StampedTransform transform;
+  tf::TransformListener listener;
+  listener.waitForTransform("odom", "base_footprint", ros::Time(0), ros::Duration(10.0));
+  listener.lookupTransform("odom", "base_footprint", ros::Time(0), transform);
+  startX = (transform.getOrigin().x() - offsetX)/resolution -1.5;
+  startY = (transform.getOrigin().y() - offsetY)/resolution +0.5;
 }
 
 
@@ -197,7 +207,7 @@ int main(int argc, char **argv)
   pub = n.advertise<nav_msgs::GridCells>("/map_check", 1000);
   pubWay = n.advertise<nav_msgs::Path>("/totes_path", 1000);
 
-  ros::Subscriber sub = n.subscribe("/map", 1000, mapCallBack);
+  ros::Subscriber sub = n.subscribe("/map_real", 1000, mapCallBack);
   ros::Subscriber goal_sub = n.subscribe("move_base_simple/goal",100,readGoal);
   ros::Subscriber start_sub = n.subscribe("initialpose",100,readStart);
 
@@ -205,12 +215,12 @@ int main(int argc, char **argv)
 
 
   ros::spinOnce();
-  if(received==2){
+  if(received==1){
     //pub.publish((publishCells()));
     std::cout <<"saw msg" <<std::endl;
     Astar();
 
-    received = 1;
+    received = 0;
   }
   }
 
