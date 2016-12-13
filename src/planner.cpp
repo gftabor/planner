@@ -18,7 +18,9 @@ float width;
 float resolution;
 float offsetX;
 float offsetY;
-int received = 0;
+int receivedMap = 0;
+int receivedGoal = 0;
+int beginAStar = 0;
 int startX = 166;
 int startY = 198;
 int goalX = 186;
@@ -32,30 +34,30 @@ ros::Publisher pubWay;
 nav_msgs::OccupancyGrid grid;
 void mapCallBack(nav_msgs::OccupancyGrid data){
   std::cout << "saw map" <<std::endl;
-
   grid = data;
   resolution = data.info.resolution;
   width = data.info.width;
   height = data.info.height;
   offsetX = data.info.origin.position.x;
   offsetY = data.info.origin.position.y;
+  receivedMap = 1;
+  if(receivedGoal)
+    beginAStar=1;
 }
-void readStart(geometry_msgs::PoseWithCovarianceStamped p){
-  startX = (p.pose.pose.position.x - offsetX)/resolution -1.5;
-  startY = (p.pose.pose.position.y - offsetY)/resolution +0.5;
-  received++;
-
-}
-void readGoal(geometry_msgs::PoseStamped p){
-  goalX = (p.pose.position.x - offsetX)/resolution -1.5;
-  goalY = (p.pose.position.y - offsetY)/resolution +0.5;
-  received++;
+void readStart(){
   tf::StampedTransform transform;
   tf::TransformListener listener;
   listener.waitForTransform("odom", "base_footprint", ros::Time(0), ros::Duration(10.0));
   listener.lookupTransform("odom", "base_footprint", ros::Time(0), transform);
   startX = (transform.getOrigin().x() - offsetX)/resolution -1.5;
   startY = (transform.getOrigin().y() - offsetY)/resolution +0.5;
+}
+void readGoal(geometry_msgs::PoseStamped p){
+  goalX = (p.pose.position.x - offsetX)/resolution -1.5;
+  goalY = (p.pose.position.y - offsetY)/resolution +0.5;
+  receivedGoal = 1;
+    if(receivedMap)
+      beginAStar=1;
 }
 
 
@@ -209,18 +211,17 @@ int main(int argc, char **argv)
 
   ros::Subscriber sub = n.subscribe("/map_real", 1000, mapCallBack);
   ros::Subscriber goal_sub = n.subscribe("move_base_simple/goal",100,readGoal);
-  ros::Subscriber start_sub = n.subscribe("initialpose",100,readStart);
 
   while(ros::ok()){
 
 
   ros::spinOnce();
-  if(received==1){
+  if(beginAStar==1){
     //pub.publish((publishCells()));
     std::cout <<"saw msg" <<std::endl;
+    readStart();
+    beginAStar = 0;
     Astar();
-
-    received = 0;
   }
   }
 
