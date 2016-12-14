@@ -21,10 +21,10 @@ float offsetY;
 int receivedMap = 0;
 int receivedGoal = 0;
 int beginAStar = 0;
-int startX = 166;
-int startY = 198;
-int goalX = 186;
-int goalY = 211;
+int startX = 0;
+int startY = 0;
+int goalX = 0;
+int goalY = 0;
 
 ros::Publisher pub;
 ros::Publisher pubWay;
@@ -33,7 +33,7 @@ ros::Publisher pubWay;
 
 nav_msgs::OccupancyGrid grid;
 void mapCallBack(nav_msgs::OccupancyGrid data){
-  std::cout << "saw map" <<std::endl;
+  //std::cout << "saw map" <<std::endl;
   grid = data;
   resolution = data.info.resolution;
   width = data.info.width;
@@ -47,8 +47,8 @@ void mapCallBack(nav_msgs::OccupancyGrid data){
 void readStart(){
   tf::StampedTransform transform;
   tf::TransformListener listener;
-  listener.waitForTransform("odom", "base_footprint", ros::Time(0), ros::Duration(10.0));
-  listener.lookupTransform("odom", "base_footprint", ros::Time(0), transform);
+  listener.waitForTransform("map", "base_footprint", ros::Time(0), ros::Duration(10.0));
+  listener.lookupTransform("map", "base_footprint", ros::Time(0), transform);
   startX = (transform.getOrigin().x() - offsetX)/resolution -1.5;
   startY = (transform.getOrigin().y() - offsetY)/resolution +0.5;
 }
@@ -129,6 +129,7 @@ int count =0;
 void Astar(){  
   std::vector<node> fringe;
   std::vector<node> processed;
+  int worked =1;
   std::make_heap(fringe.begin(),fringe.end(),Comp());
   node firstNode(startX,startY,0,startX,startY,0);
   fringe.push_back(firstNode); std::push_heap (fringe.begin(),fringe.end(),Comp());
@@ -146,6 +147,7 @@ void Astar(){
     count ++;
     if(fringe.size()==0 || count >500000){
       std::cout << "no path" <<std::endl;
+      worked = 0;
       break;
     }
 
@@ -196,7 +198,8 @@ void Astar(){
     //ros::Duration(0.0005).sleep(); // sleep for half a second
   }  
   //create and publish waypoints
-  createWay(processed);
+  if(worked)
+    createWay(processed);
   
 }
 
@@ -210,7 +213,7 @@ int main(int argc, char **argv)
   pubWay = n.advertise<nav_msgs::Path>("/totes_path", 1000);
 
   ros::Subscriber sub = n.subscribe("/map_real", 1000, mapCallBack);
-  ros::Subscriber goal_sub = n.subscribe("move_base_simple/goal",100,readGoal);
+  ros::Subscriber goal_sub = n.subscribe("goal",100,readGoal);
 
   while(ros::ok()){
 
