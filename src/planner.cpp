@@ -1,6 +1,7 @@
 #include "ros/ros.h"
 #include <tf/transform_listener.h>
 #include "std_msgs/String.h"
+#include "std_msgs/Int64.h"
 #include "planner/node.h"
 #include <vector>       // std::vector
 #include <algorithm>    // std::make_heap, std::pop_heap, std::push_heap, std::sort_heap
@@ -52,12 +53,23 @@ void readStart(){
   startX = (transform.getOrigin().x() - offsetX)/resolution -1.5;
   startY = (transform.getOrigin().y() - offsetY)/resolution +0.5;
 }
+//take in real pos
 void readGoal(geometry_msgs::PoseStamped p){
   goalX = (p.pose.position.x - offsetX)/resolution -1.5;
   goalY = (p.pose.position.y - offsetY)/resolution +0.5;
   receivedGoal = 1;
     if(receivedMap)
       beginAStar=1;
+}
+//take in 
+void readGoalMap(std_msgs::Int64 input){
+
+  startY = input.data/width;
+  startX = input.data - startY*width -1;
+  startY++;
+  receivedGoal = 1;
+  if(receivedMap)
+    beginAStar=1;
 }
 
 
@@ -214,6 +226,8 @@ int main(int argc, char **argv)
 
   ros::Subscriber sub = n.subscribe("/map_real", 1000, mapCallBack);
   ros::Subscriber goal_sub = n.subscribe("goal",100,readGoal);
+  ros::Subscriber goal_sub_grid = n.subscribe("grid_goal",100,readGoalMap);
+
 
   while(ros::ok()){
 
