@@ -14,8 +14,8 @@
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 
-float height;
-float width;
+long height;
+long width;
 float resolution;
 float offsetX;
 float offsetY;
@@ -64,9 +64,8 @@ void readGoal(geometry_msgs::PoseStamped p){
 //take in 
 void readGoalMap(std_msgs::Int64 input){
 
-  startY = input.data/width;
-  startX = input.data - startY*width -1;
-  startY++;
+  startX = input.data/width + 1;
+  startY = input.data%width - 1;
   receivedGoal = 1;
   if(receivedMap)
     beginAStar=1;
