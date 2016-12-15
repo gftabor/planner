@@ -136,13 +136,14 @@ void createWay(std::vector<node> &processed){
 }
   
 
-int count =0;
 void Astar(){  
   std::vector<node> fringe;
   std::vector<node> processed;
   int worked =1;
   std::make_heap(fringe.begin(),fringe.end(),Comp());
   node firstNode(startX,startY,0,startX,startY,0);
+  int count =0;
+
   fringe.push_back(firstNode); std::push_heap (fringe.begin(),fringe.end(),Comp());
   while(true){//process nodes until you process goal
     node processingNode = fringe.front();
@@ -155,8 +156,7 @@ void Astar(){
 
         break;
       }
-    count ++;
-    if(fringe.size()==0 || count >500000){
+    if(fringe.size()==0 || count > 10000){
       std::cout << "no path" <<std::endl;
       worked = 0;
       break;
@@ -178,6 +178,8 @@ void Astar(){
     if(wasProcessed){
       continue;
     }
+    count ++;
+
 
 
     //process by creating new points that are neighbours to currently being processed node
@@ -191,7 +193,7 @@ void Astar(){
         case 3:y--; break;
       }
       if(x <1 || y <1 || x>width || y >height){ 
-        std::cout <<"hit bounds" <<std::endl;
+        std::cout <<"hit bounds  " << count <<std::endl;
         continue;
       }
       if(grid.data[(x+1 + (y-1)*width)]==100){ // if occupied
